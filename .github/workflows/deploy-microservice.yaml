@@ -18,10 +18,10 @@ jobs:
 
       - name: Build & Push User Service
         run: |
-          docker build -t trillsss/user-service:latest .
+          docker build -t trillsss/user-service:latest -f microservices/user-service/Dockerfile microservices/user-service/
           docker push trillsss/user-service:latest
 
       - name: Build & Push Order Service
         run: |
-          docker build -t trillsss/order-service:latest .
+          docker build -t trillsss/order-service:latest -f microservices/order-service/Dockerfile microservices/order-service/
           docker push trillsss/order-service:latest
