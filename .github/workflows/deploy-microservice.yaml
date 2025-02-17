@@ -15,8 +15,8 @@ jobs:
 
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "trillsss" --password-stdin
-        
-        - name: Build & Push User Service
+
+      - name: Build & Push User Service
         run: |
           docker build -t trillsss/user-service -f microservices/user-service/Dockerfile microservices/user-service/
           docker push trillsss/user-service
@@ -25,7 +25,6 @@ jobs:
         run: |
           docker build -t trillsss/order-service -f microservices/order-service/Dockerfile microservices/order-service/
           docker push trillsss/order-service
-
 
       - name: Set up kubectl
         run: |
@@ -61,3 +60,4 @@ jobs:
         run: |
           kubectl apply -f kubernetes/user-service.yaml
           kubectl apply -f kubernetes/order-service.yaml
+        
