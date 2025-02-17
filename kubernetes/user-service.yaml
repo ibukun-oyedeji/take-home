@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-service
+  namespace: assessment
   labels:
     app: user-service
 spec:
@@ -16,7 +17,7 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: trillsss/user-service:latest # Updated to use your Docker Hub username
+          image: trillsss/user-service:latest
           ports:
             - containerPort: 8000
           envFrom:
@@ -27,6 +28,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: user-service
+  namespace: assessment
 spec:
   selector:
     app: user-service

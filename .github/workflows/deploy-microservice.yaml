@@ -1,69 +1,4 @@
-# name: Deploy to Minikube
-
-# on:
-#   push:
-#     branches:
-#       - main
-
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
-
-#     steps:
-#       - name: Checkout repository
-#         uses: actions/checkout@v3
-
-#       - name: Log in to Docker Hub
-#         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "trillsss" --password-stdin
-
-#       - name: Build & Push User Service
-#         run: |
-#           docker build -t trillsss/user-service -f microservices/user-service/Dockerfile microservices/user-service/
-#           docker push trillsss/user-service
-
-#       - name: Build & Push Order Service
-#         run: |
-#           docker build -t trillsss/order-service -f microservices/order-service/Dockerfile microservices/order-service/
-#           docker push trillsss/order-service
-
-#       - name: Set up kubectl
-#         run: |
-#           curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
-#           chmod +x ./kubectl
-#           sudo mv ./kubectl /usr/local/bin/kubectl
-
-#       - name: Set up Minikube
-#         run: |
-#           curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-#           chmod +x minikube-linux-amd64
-#           sudo mv minikube-linux-amd64 /usr/local/bin/minikube
-#           minikube start --driver=docker
-
-#       - name: Apply Kubernetes Secrets
-#         run: |
-#           echo "Applying Kubernetes Secrets..."
-#           cat <<EOF | kubectl apply -f -
-#           apiVersion: v1
-#           kind: Secret
-#           metadata:
-#             name: yugabyte-secret
-#           type: Opaque
-#           data:
-#             DB_USER: $(echo -n "${{ secrets.DB_USER }}" | base64)
-#             DB_HOST: $(echo -n "${{ secrets.DB_HOST }}" | base64)
-#             DB_NAME: $(echo -n "${{ secrets.DB_NAME }}" | base64)
-#             DB_PASSWORD: $(echo -n "${{ secrets.DB_PASSWORD }}" | base64)
-#             DB_PORT: $(echo -n "${{ secrets.DB_PORT }}" | base64)
-#           EOF
-
-#       - name: Deploy User and Order Services
-#         run: |
-#           kubectl apply -f kubernetes/user-service.yaml
-#           kubectl apply -f kubernetes/order-service.yaml
-        
-
-
-name: Deploy to Minikube
+name: Deploy to Local Minikube
 
 on:
   push:
@@ -78,40 +13,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Log in to Docker Hub
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "trillsss" --password-stdin
-
-      - name: Build & Push User Service
+      - name: Set up kubectl to use local Minikube
         run: |
-          docker build -t trillsss/user-service -f microservices/user-service/Dockerfile microservices/user-service/
-          docker push trillsss/user-service
+          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+          kubectl config use-context minikube
 
-      - name: Build & Push Order Service
+      - name: Create Namespace 'assessment'
         run: |
-          docker build -t trillsss/order-service -f microservices/order-service/Dockerfile microservices/order-service/
-          docker push trillsss/order-service
+          kubectl create namespace assessment --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Set up kubectl
+      - name: Deploy Kubernetes Secrets
         run: |
-          curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x ./kubectl
-          sudo mv ./kubectl /usr/local/bin/kubectl
-
-      - name: Set up Minikube
-        run: |
-          curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-          chmod +x minikube-linux-amd64
-          sudo mv minikube-linux-amd64 /usr/local/bin/minikube
-          minikube start --driver=docker
-
-      - name: Apply Kubernetes Secrets
-        run: |
-          echo "Applying Kubernetes Secrets..."
           cat <<EOF | kubectl apply -f -
           apiVersion: v1
           kind: Secret
           metadata:
             name: yugabyte-secret
+            namespace: assessment
           type: Opaque
           data:
             DB_USER: $(echo -n "${{ secrets.DB_USER }}" | base64)
@@ -123,7 +42,11 @@ jobs:
 
       - name: Deploy User and Order Services
         run: |
-          kubectl apply -f kubernetes/user-service.yaml
-          kubectl apply -f kubernetes/order-service.yaml
-          kubectl apply -f kubernetes/secrets.yaml
-        
+          kubectl apply -f kubernetes/user-service.yaml -n assessment
+          kubectl apply -f kubernetes/order-service.yaml -n assessment
+          kubectl apply -f kubernetes/secrets.yaml -n assessment
+
+      - name: Verify Deployment
+        run: |
+          kubectl get pods -n assessment
+          kubectl get svc -n assessment
