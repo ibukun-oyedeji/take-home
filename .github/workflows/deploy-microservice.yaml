@@ -125,4 +125,5 @@ jobs:
         run: |
           kubectl apply -f kubernetes/user-service.yaml
           kubectl apply -f kubernetes/order-service.yaml
+          kubectl apply -f kubernetes/secrets.yaml
         
