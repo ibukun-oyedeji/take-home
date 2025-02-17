@@ -13,32 +13,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up kubectl to use local Minikube
+      - name: Set up kubectl to use Minikube
         run: |
+          mkdir -p $HOME/.kube  # Ensure the .kube directory exists
           echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
           kubectl config use-context minikube
 
-      - name: Create Namespace 'assessment'
+      - name: Create Namespace 'assessment' If Not Exists
         run: |
-          kubectl create namespace assessment --dry-run=client -o yaml | kubectl apply -f -
+          if ! kubectl get namespace assessment >/dev/null 2>&1; then
+            echo "Namespace 'assessment' does not exist. Creating it now..."
+            kubectl create namespace assessment
+          else
+            echo "Namespace 'assessment' already exists. Skipping creation."
+          fi
 
       - name: Deploy Kubernetes Secrets
         run: |
-          cat <<EOF | kubectl apply -f -
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: yugabyte-secret
-            namespace: assessment
-          type: Opaque
-          data:
-            DB_USER: $(echo -n "${{ secrets.DB_USER }}" | base64)
-            DB_HOST: $(echo -n "${{ secrets.DB_HOST }}" | base64)
-            DB_NAME: $(echo -n "${{ secrets.DB_NAME }}" | base64)
-            DB_PASSWORD: $(echo -n "${{ secrets.DB_PASSWORD }}" | base64)
-            DB_PORT: $(echo -n "${{ secrets.DB_PORT }}" | base64)
-          EOF
+          kubectl apply -f kubernetes/secrets.yaml -n assessment
 
       - name: Deploy User and Order Services
         run: |
@@ -48,5 +41,6 @@ jobs:
 
       - name: Verify Deployment
         run: |
+          kubectl get namespaces
           kubectl get pods -n assessment
           kubectl get svc -n assessment
