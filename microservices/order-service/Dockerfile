@@ -4,8 +4,8 @@ FROM node:18
 # Set working directory inside the container
 WORKDIR /app
 
-# Copy package.json and package-lock.json first for better caching
-COPY package.json package-lock.json ./
+# Copy package.json first
+COPY package.json ./
 
 # Install dependencies
 RUN npm install
@@ -14,8 +14,7 @@ RUN npm install
 COPY . .
 
 # Expose the service port
-EXPOSE 8080
+EXPOSE 8000
 
 # Start the service
 CMD ["node", "index.js"]
-
