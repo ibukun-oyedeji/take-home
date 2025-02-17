@@ -1,0 +1,16 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: order-service-scaler
+  namespace: assessment
+spec:
+  scaleTargetRef:
+    name: order-service
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  triggers:
+    - type: postgresql
+      metadata:
+        connectionStringFromEnv: POSTGRES_CONNECTION
+        query: "SELECT count(*) FROM orders;"
+        threshold: "100"
