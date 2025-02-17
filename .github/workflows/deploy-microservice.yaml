@@ -1,4 +1,4 @@
-name: Deploy to Local Minikube
+name: Build and Push Docker Images
 
 on:
   push:
@@ -6,62 +6,22 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Check if KUBECONFIG Secret is Loaded
-        run: |
-          if [ -z "${{ secrets.KUBECONFIG }}" ]; then
-            echo "❌ ERROR: KUBECONFIG secret is empty or not set in GitHub Secrets."
-            exit 1
-          else
-            echo "✅ SUCCESS: KUBECONFIG is set in GitHub Secrets."
-          fi
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "trillsss" --password-stdin
 
-      - name: Set up Minikube Kubeconfig
+      - name: Build & Push User Service
         run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
-          export KUBECONFIG=$HOME/.kube/config
-          kubectl config use-context minikube || echo "⚠️ Warning: Unable to switch context to Minikube"
+          docker build -t trillsss/user-service:latest ./user-service
+          docker push trillsss/user-service:latest
 
-      - name: Verify Kubernetes Context & Connection
+      - name: Build & Push Order Service
         run: |
-          echo "Checking Kubernetes config..."
-          cat $HOME/.kube/config || echo "❌ ERROR: Unable to read kubeconfig"
-          
-          echo "Checking current Kubernetes context..."
-          kubectl config current-context || echo "❌ ERROR: No Kubernetes context found"
-
-          echo "Checking cluster info..."
-          kubectl cluster-info || echo "❌ ERROR: Unable to fetch cluster info"
-
-      - name: Create Namespace 'assessment' If Not Exists
-        run: |
-          if ! kubectl get namespace assessment >/dev/null 2>&1; then
-            echo "Namespace 'assessment' does not exist. Creating it now..."
-            kubectl create namespace assessment
-          else
-            echo "Namespace 'assessment' already exists. Skipping creation."
-          fi
-
-      - name: Deploy Kubernetes Secrets
-        run: |
-          kubectl apply -f kubernetes/secrets.yaml -n assessment
-
-      - name: Deploy User and Order Services
-        run: |
-          kubectl apply -f kubernetes/user-service.yaml -n assessment
-          kubectl apply -f kubernetes/order-service.yaml -n assessment
-          kubectl apply -f kubernetes/secrets.yaml -n assessment
-        
-      - name: Verify Deployment
-        run: |
-          kubectl get namespaces
-          kubectl get pods -n assessment
-          kubectl get svc -n assessment
+          docker build -t trillsss/order-service:latest ./order-service
+          docker push trillsss/order-service:latest
