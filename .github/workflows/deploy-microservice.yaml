@@ -18,12 +18,12 @@ jobs:
 
       - name: Build & Push User Service
         run: |
-          docker build -t trillsss/user-service ./user-service
+          docker build -t trillsss/user-service .
           docker push trillsss/user-service
 
       - name: Build & Push Order Service
         run: |
-          docker build -t trillsss/order-service ./order-service
+          docker build -t trillsss/order-service .
           docker push trillsss/order-service
 
       - name: Set up kubectl
