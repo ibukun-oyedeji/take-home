@@ -13,12 +13,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up kubectl to use Minikube
+      - name: Debug: Check if KUBECONFIG Secret is Loaded
         run: |
-          mkdir -p $HOME/.kube  # Ensure the .kube directory exists
+          if [ -z "${{ secrets.KUBECONFIG }}" ]; then
+            echo "❌ ERROR: KUBECONFIG secret is empty or not set in GitHub Secrets."
+            exit 1
+          else
+            echo "✅ SUCCESS: KUBECONFIG is set in GitHub Secrets."
+          fi
+
+      - name: Set up Minikube Kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
-          kubectl config use-context minikube
+          export KUBECONFIG=$HOME/.kube/config
+          kubectl config use-context minikube || echo "⚠️ Warning: Unable to switch context to Minikube"
+
+      - name: Debug: Verify Kubernetes Context & Connection
+        run: |
+          echo "Checking Kubernetes config..."
+          cat $HOME/.kube/config || echo "❌ ERROR: Unable to read kubeconfig"
+          
+          echo "Checking current Kubernetes context..."
+          kubectl config current-context || echo "❌ ERROR: No Kubernetes context found"
+
+          echo "Checking cluster info..."
+          kubectl cluster-info || echo "❌ ERROR: Unable to fetch cluster info"
 
       - name: Create Namespace 'assessment' If Not Exists
         run: |
@@ -38,7 +59,7 @@ jobs:
           kubectl apply -f kubernetes/user-service.yaml -n assessment
           kubectl apply -f kubernetes/order-service.yaml -n assessment
           kubectl apply -f kubernetes/secrets.yaml -n assessment
-
+        
       - name: Verify Deployment
         run: |
           kubectl get namespaces
